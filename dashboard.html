@@ -1,0 +1,853 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Paper Kite — Trading Cockpit</title>
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<style>
+  :root{
+    /* DARK theme (default) */
+    --bg:#0b0d11; --panel:#14171d; --panel-2:#1a1e26; --line:#242a35;
+    --ink:#e6edf3; --ink-2:#aeb7c3; --muted:#6b7280;
+    --bull:#00c26e; --bull-bg:rgba(0,194,110,.12); --bull-glow:0 0 28px rgba(0,194,110,.18);
+    --bear:#ff3b5c; --bear-bg:rgba(255,59,92,.12); --bear-glow:0 0 28px rgba(255,59,92,.18);
+    --warn:#ffb020; --warn-bg:rgba(255,176,32,.12);
+    --danger:#ff6b3d; --crisis:#c51d3b; --calm:#28c878;
+    --info:#3aa0ff; --info-bg:rgba(58,160,255,.12);
+    --gold:#f5c451; --purple:#a27bff;
+    --sidebar:#070a0e; --sidebar-line:#161b24; --accent:#ff5722;
+    --ok:#00c26e; --stale:#ffb020; --down:#ff3b5c;
+    --chart-bg:#0f1115;
+  }
+  body.theme-light{
+    /* SOFT theme — paper-like, no glare */
+    --bg:#d9dde5; --panel:#e6eaf0; --panel-2:#dfe4eb; --line:#b8c0cc;
+    --ink:#1f2633; --ink-2:#4a5362; --muted:#7a8495;
+    --bull:#058a52; --bull-bg:rgba(5,138,82,.12); --bull-glow:0 0 22px rgba(5,138,82,.15);
+    --bear:#c62a47; --bear-bg:rgba(198,42,71,.11); --bear-glow:0 0 22px rgba(198,42,71,.15);
+    --warn:#a87100; --warn-bg:rgba(168,113,0,.12);
+    --danger:#b84c2d; --crisis:#8a1428; --calm:#1f9557;
+    --info:#2368b4; --info-bg:rgba(35,104,180,.10);
+    --gold:#9d7b1a; --purple:#6a4bc2;
+    --sidebar:#2a3041; --sidebar-line:#373e51; --accent:#ff5722;
+    --ok:#058a52; --stale:#a87100; --down:#c62a47;
+    --chart-bg:#ced4dc;
+  }
+  body.theme-light aside{color:#c9d1e1}
+  body.theme-light aside nav a{color:#aab4c6}
+  body.theme-light aside .logo small{color:#aab4c6}
+  *{box-sizing:border-box}
+  html,body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--ink);font-size:13px}
+  .app{display:grid;grid-template-columns:210px 1fr;min-height:100vh}
+  aside{background:var(--sidebar);color:var(--ink-2);padding:16px 0;border-right:1px solid var(--sidebar-line);position:sticky;top:0;height:100vh;overflow-y:auto}
+  aside .logo{padding:0 20px 14px;border-bottom:1px solid var(--sidebar-line);font-weight:700;color:#fff;font-size:16px}
+  aside .logo small{display:block;font-weight:400;color:var(--muted);font-size:11px;margin-top:3px}
+  aside nav a{display:flex;align-items:center;gap:10px;padding:9px 20px;color:var(--ink-2);text-decoration:none;font-size:12.5px;border-left:3px solid transparent}
+  aside nav a.active{background:rgba(255,87,34,.08);border-left-color:var(--accent);color:#fff}
+  aside nav a:hover{background:rgba(255,255,255,.04)}
+  aside nav a .dot{width:7px;height:7px;border-radius:50%;background:var(--info)}
+  aside nav a .dot.bull{background:var(--bull)} aside nav a .dot.bear{background:var(--bear)} aside nav a .dot.warn{background:var(--warn)}
+  main{padding:14px 22px 40px}
+
+  /* STATUS BANNER */
+  .status-banner{background:linear-gradient(90deg,var(--panel) 0%,var(--panel-2) 100%);border:1px solid var(--line);border-radius:8px;padding:10px 16px;margin-bottom:14px;display:grid;grid-template-columns:1fr 1fr 1.4fr 1fr 1fr 110px;gap:16px;align-items:center}
+  .status-banner.weekend{opacity:.75;border-color:#2a2f3a}
+  .sb-item{display:flex;flex-direction:column;gap:3px}
+  .sb-item .k{font-size:9.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;font-weight:600}
+  .sb-item .v{font-size:12.5px;color:#fff;font-weight:600;display:flex;align-items:center;gap:6px}
+  .phase-idle{color:var(--info)}
+  .pulse{width:8px;height:8px;border-radius:50%;background:var(--bull);box-shadow:0 0 8px var(--bull);animation:pulse 2s infinite}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+  .mkt-closed{color:var(--bear)} .mkt-open{color:var(--bull)} .mkt-weekend{color:var(--muted)}
+  .feeds{display:flex;gap:8px;flex-wrap:wrap}
+  .feed{font-size:10.5px;display:flex;align-items:center;gap:4px;color:var(--ink-2)}
+  .feed .s{width:6px;height:6px;border-radius:50%}
+  .feed .s.ok{background:var(--ok)} .feed .s.stale{background:var(--stale)} .feed .s.down{background:var(--down)}
+  .weather{font-size:36px;text-align:center;line-height:1}
+  .weather-lbl{font-size:9.5px;color:var(--muted);text-align:center;margin-top:3px;letter-spacing:.5px;font-weight:600;text-transform:uppercase}
+  .stale-chip{background:var(--warn-bg);color:var(--warn);padding:1px 6px;border-radius:2px;font-size:9.5px;font-weight:700;border:1px solid var(--warn);margin-left:4px}
+
+  .topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
+  .topbar h1{font-size:16px;font-weight:600;margin:0;color:#fff}
+  .topbar h1 .user{color:var(--ink-2);font-weight:400}
+  .mode-badge{background:var(--warn-bg);color:var(--warn);padding:5px 12px;border-radius:3px;font-size:10.5px;font-weight:700;letter-spacing:.5px;border:1px solid var(--warn);text-transform:uppercase}
+
+  /* KPI CARDS */
+  .cards{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:13px 16px;border-left:3px solid var(--info);transition:box-shadow .2s}
+  .card.bull{border-left-color:var(--bull);box-shadow:var(--bull-glow)}
+  .card.bear{border-left-color:var(--bear);box-shadow:var(--bear-glow)}
+  .card.info{border-left-color:var(--info)} .card.warn{border-left-color:var(--warn)}
+  .card .label{color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.6px;margin-bottom:5px;font-weight:600}
+  .card .value{font-size:20px;font-weight:600;color:#fff;font-variant-numeric:tabular-nums}
+  .card .sub{font-size:11px;color:var(--muted);margin-top:3px}
+  .pos{color:var(--bull) !important} .neg{color:var(--bear) !important}
+
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:6px;margin-bottom:14px;overflow:hidden}
+  .panel h2{font-size:13px;font-weight:600;padding:10px 16px;margin:0;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;color:#fff;background:var(--panel-2)}
+  .panel h2 .count{color:var(--muted);font-weight:400;font-size:11.5px}
+  .panel.highlight{border:1px solid rgba(0,194,110,.3);box-shadow:0 0 20px rgba(0,194,110,.05)}
+  .panel.dim{opacity:.88}
+
+  table{width:100%;border-collapse:collapse;font-size:12px}
+  th{text-align:left;padding:9px 16px;color:var(--muted);font-weight:600;text-transform:uppercase;font-size:10px;letter-spacing:.5px;border-bottom:1px solid var(--line);background:rgba(255,255,255,.02)}
+  td{padding:10px 16px;border-bottom:1px solid var(--line);color:var(--ink)}
+  tr:last-child td{border-bottom:none}
+  tr:hover td{background:rgba(255,255,255,.015)}
+  td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
+  .empty{padding:24px 16px;text-align:center;color:var(--muted);font-size:12px;font-style:italic}
+
+  .chip{display:inline-block;padding:2px 8px;border-radius:3px;font-size:10px;font-weight:700;letter-spacing:.4px;text-transform:uppercase}
+  .chip.buy{background:var(--bull-bg);color:var(--bull);border:1px solid var(--bull)}
+  .chip.sell{background:var(--bear-bg);color:var(--bear);border:1px solid var(--bear)}
+  .chip.mis{background:rgba(255,87,34,.12);color:var(--accent);border:1px solid var(--accent)}
+  .chip.cnc{background:var(--info-bg);color:var(--info);border:1px solid var(--info)}
+  .chip.fut{background:rgba(162,123,255,.12);color:var(--purple);border:1px solid var(--purple)}
+  .chip.opt{background:rgba(245,196,81,.12);color:var(--gold);border:1px solid var(--gold)}
+  .chip.no-trade{background:rgba(107,114,128,.2);color:var(--ink-2)}
+  .chip.skip{background:var(--warn-bg);color:var(--warn)}
+  .chip.enter{background:var(--bull-bg);color:var(--bull)}
+  .chip.exit{background:var(--bear-bg);color:var(--bear)}
+  .chip.regime{background:var(--info-bg);color:var(--info)}
+  .chip.signal{background:rgba(162,123,255,.12);color:var(--purple)}
+  .chip.learn{background:rgba(245,196,81,.12);color:var(--gold)}
+  .chip.grade-aplus{background:rgba(0,194,110,.2);color:var(--bull);border:1.5px solid var(--bull);box-shadow:0 0 6px rgba(0,194,110,.3)}
+  .chip.grade-a{background:var(--bull-bg);color:var(--bull);border:1px solid var(--bull)}
+  .chip.grade-b{background:var(--warn-bg);color:var(--warn);border:1px solid var(--warn)}
+  .chip.grade-c{background:var(--bear-bg);color:var(--bear);border:1px solid var(--bear)}
+  .chip.pending{background:rgba(107,114,128,.2);color:var(--ink-2)}
+
+  /* REGIME */
+  .regime{display:grid;grid-template-columns:repeat(4,1fr);gap:0}
+  .regime .item{padding:11px 16px;border-right:1px solid var(--line);border-bottom:1px solid var(--line)}
+  .regime .item:nth-child(4n){border-right:none}
+  .regime .item .k{color:var(--muted);display:block;font-size:10px;text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px;font-weight:600}
+  .regime .item .v{font-size:13.5px;font-weight:500;color:#fff}
+  .regime .item .v.bull{color:var(--bull)} .regime .item .v.bear{color:var(--bear)} .regime .item .v.warn{color:var(--warn)}
+
+  /* GAUGES */
+  .gauges{display:grid;grid-template-columns:repeat(2,1fr);gap:0}
+  .gauge{padding:14px 16px;border-right:1px solid var(--line)}
+  .gauge:last-child{border-right:none}
+  .gauge .header{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px}
+  .gauge .title{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;font-weight:600}
+  .gauge .score{font-size:22px;font-weight:700;font-variant-numeric:tabular-nums;color:#fff}
+  .gauge .bar{height:9px;background:var(--panel-2);border-radius:5px;overflow:hidden;position:relative;margin-bottom:8px}
+  .gauge .bar .fill{height:100%;background:linear-gradient(90deg,var(--calm) 0%,var(--calm) 19%,var(--warn) 20%,var(--warn) 39%,var(--danger) 40%,var(--danger) 59%,var(--crisis) 60%,var(--crisis) 100%)}
+  .gauge .bar .pointer{position:absolute;top:-3px;width:3px;height:15px;background:#fff;border-radius:2px;box-shadow:0 0 6px rgba(255,255,255,.6)}
+  .gauge .meta{display:flex;gap:10px;font-size:11px;color:var(--ink-2);align-items:center;flex-wrap:wrap}
+  .gauge .meta strong{color:#fff;font-weight:600}
+  .level{font-weight:700;font-size:10.5px;letter-spacing:.5px;padding:2px 8px;border-radius:3px;text-transform:uppercase}
+  .level.calm{background:rgba(40,200,120,.15);color:var(--calm)}
+  .level.alert{background:var(--warn-bg);color:var(--warn)}
+  .level.warning{background:rgba(255,107,61,.15);color:var(--danger)}
+  .level.danger{background:rgba(197,29,59,.2);color:var(--crisis)}
+  .level.crisis{background:var(--crisis);color:#fff}
+  .dir{font-weight:600;font-size:10.5px}
+  .dir.surging,.dir.rising{color:var(--bear)}
+  .dir.flat{color:var(--muted)}
+  .dir.cooling,.dir.retreating{color:var(--bull)}
+
+  /* WATCHED TRADES */
+  .watched{display:grid;grid-template-columns:repeat(3,1fr);gap:0}
+  .wcell{padding:14px 16px;border-right:1px solid var(--line);position:relative}
+  .wcell:last-child{border-right:none}
+  .wcell.aplus{background:linear-gradient(180deg,rgba(0,194,110,.04) 0%,transparent 100%);border-top:2px solid var(--bull)}
+  .wcell.a{background:linear-gradient(180deg,rgba(0,194,110,.02) 0%,transparent 100%);border-top:2px solid rgba(0,194,110,.6)}
+  .wcell.b{border-top:2px solid var(--warn)}
+  .wcell .whead{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+  .wcell .wname{font-size:14px;font-weight:700;color:#fff}
+  .wcell .wname .ltp{font-size:12px;font-weight:500;color:var(--ink-2);margin-left:6px}
+  .wcell .wchart{height:160px;margin-bottom:8px}
+  .wcell .wlvls{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:6px}
+  .wcell .lvl{padding:6px 8px;border-radius:3px;text-align:center}
+  .wcell .lvl.entry{background:rgba(255,176,32,.08);border:1px solid rgba(255,176,32,.4)}
+  .wcell .lvl.stop{background:var(--bear-bg);border:1px solid rgba(255,59,92,.4)}
+  .wcell .lvl.target{background:var(--bull-bg);border:1px solid rgba(0,194,110,.4)}
+  .wcell .lvl .lk{font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;font-weight:600}
+  .wcell .lvl .lv{font-size:12px;font-weight:700;font-variant-numeric:tabular-nums;margin-top:2px}
+  .wcell .lvl.entry .lv{color:var(--warn)}
+  .wcell .lvl.stop .lv{color:var(--bear)}
+  .wcell .lvl.target .lv{color:var(--bull)}
+  .wcell .wthesis{font-size:11px;color:var(--ink-2);line-height:1.45}
+  .wcell .wmeta{display:flex;gap:8px;align-items:center;margin-bottom:8px;font-size:11px}
+  .wcell .rr{color:var(--ink-2)} .wcell .rr strong{color:var(--bull)}
+
+  /* MARKET CONTEXT dimmed */
+  .charts-dim{display:grid;grid-template-columns:repeat(4,1fr);gap:0}
+  .chart-cell-dim{padding:10px 12px;border-right:1px solid var(--line);opacity:.85}
+  .chart-cell-dim:nth-child(4n){border-right:none}
+  .chart-cell-dim .ct{font-size:10.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;font-weight:600;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center}
+  .chart-cell-dim .mc-chart{height:140px}
+
+  /* SCANNER */
+  .scan-row{display:grid;grid-template-columns:30px 95px 1.2fr 60px 55px 1.8fr;gap:10px;padding:10px 16px;border-bottom:1px solid var(--line);align-items:center;font-size:12px}
+  .scan-row.hdr{background:rgba(255,255,255,.02);color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.5px;font-weight:600;padding:9px 16px}
+  .scan-row.top{background:rgba(0,194,110,.04);padding:13px 16px;font-size:12.5px}
+  .scan-row:last-child{border-bottom:none}
+  .scan-row .rank{font-weight:700;color:var(--accent)}
+  .scan-row.top .rank{font-size:15px;color:var(--bull)}
+  .scan-row .sym{font-weight:600;color:#fff}
+  .scan-row.top .sym{font-size:13.5px}
+  .scan-row .num{text-align:right;font-variant-numeric:tabular-nums;color:var(--ink-2)}
+
+  /* SECTOR SIGNALS compact 3-col */
+  .sig-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:0}
+  .sig-col{padding:0;border-right:1px solid var(--line)}
+  .sig-col:last-child{border-right:none}
+  .sig-col h3{font-size:11px;font-weight:700;padding:10px 14px;margin:0;letter-spacing:.5px;text-transform:uppercase;text-align:center;border-bottom:1px solid var(--line)}
+  .sig-col.go h3{color:var(--bull);background:rgba(0,194,110,.06)}
+  .sig-col.watch h3{color:var(--warn);background:rgba(255,176,32,.06)}
+  .sig-col.nogo h3{color:var(--bear);background:rgba(255,59,92,.06)}
+  .sig-col ul{list-style:none;padding:8px 14px;margin:0}
+  .sig-col li{padding:4px 0;font-size:12px;color:var(--ink-2);display:flex;justify-content:space-between;gap:10px}
+  .sig-col li strong{color:#fff;font-weight:600}
+  .sig-col li .names{color:var(--muted);font-size:10.5px;text-align:right}
+
+  /* DECISION LOG */
+  .log-entry{display:grid;grid-template-columns:85px 75px 1fr;gap:10px;padding:9px 16px;border-bottom:1px solid var(--line);align-items:baseline;font-size:12px}
+  .log-entry:last-child{border-bottom:none}
+  .log-entry .ts{color:var(--muted);font-size:10.5px;font-variant-numeric:tabular-nums;line-height:1.3}
+  .log-entry .msg{color:var(--ink)}
+  .log-entry .msg .why{color:var(--ink-2);font-size:11px}
+
+  /* COLLAPSED PANELS */
+  .collapsed-stub{padding:14px 16px;color:var(--muted);font-size:12px;text-align:center}
+  .collapsed-stub strong{color:var(--ink-2)}
+
+  footer{padding:14px 0;color:var(--muted);font-size:11px;text-align:center;border-top:1px solid var(--line);margin-top:8px}
+  footer .lock{color:var(--warn);font-weight:600}
+</style>
+</head>
+<body>
+<div class="app">
+  <aside>
+    <div class="logo">Paper Kite<small>Trading Cockpit</small></div>
+    <nav>
+      <a href="#" class="active"><span class="dot"></span>Overview</a>
+      <a href="#regime"><span class="dot warn"></span>Regime & Crisis</a>
+      <a href="#watched"><span class="dot bull"></span>Watched Trades</a>
+      <a href="#context"><span class="dot"></span>Market Context</a>
+      <a href="#scanner"><span class="dot"></span>Setup Scanner</a>
+      <a href="#signals"><span class="dot"></span>Sector Signals</a>
+      <a href="#positions"><span class="dot"></span>Positions</a>
+      <a href="#decisions"><span class="dot"></span>Decision Log</a>
+      <a href="#perf"><span class="dot"></span>Performance</a>
+    </nav>
+  </aside>
+
+  <main>
+    <!-- STATUS BANNER -->
+    <div class="status-banner" id="sb">
+      <div class="sb-item"><span class="k">System Phase</span><span class="v phase-idle"><span class="pulse"></span>IDLE</span></div>
+      <div class="sb-item"><span class="k">Market Clock</span><span class="v" id="clock">—</span></div>
+      <div class="sb-item"><span class="k">Data Feeds</span>
+        <span class="feeds" id="feeds">
+          <span class="feed"><span class="s ok"></span>Kite</span>
+          <span class="feed" id="feed-wci"><span class="s stale"></span>WCI</span>
+          <span class="feed" id="feed-ifs"><span class="s stale"></span>IFS</span>
+          <span class="feed"><span class="s stale"></span>CCI·pending</span>
+          <span class="feed"><span class="s ok"></span>BBC</span>
+          <span class="feed"><span class="s ok"></span>AlJaz</span>
+          <span class="feed"><span class="s ok"></span>BSE</span>
+          <span class="feed"><span class="s ok"></span>SEBI</span>
+        </span>
+      </div>
+      <div class="sb-item"><span class="k">Next Action</span><span class="v" id="nextAction">Mon 09:00 IST pre-open scan</span></div>
+      <div class="sb-item"><span class="k">Strategy</span><span class="v">V1.2 · ₹10k/trade</span></div>
+      <div class="sb-item" style="align-items:center">
+        <div class="weather" id="weather">🌧️</div>
+        <div class="weather-lbl" id="weatherLbl">ALERT</div>
+      </div>
+    </div>
+
+    <!-- TUNNEL PANEL -->
+    <div class="panel" id="tunnelPanel" style="margin-bottom:14px">
+      <h2 style="padding:9px 16px">🔗 TradingView Webhook URLs <span class="count" id="tunnelStatus">— detecting…</span></h2>
+      <div style="padding:12px 16px;display:grid;grid-template-columns:1fr auto auto auto auto;gap:10px;align-items:center;font-size:12px">
+        <div style="color:var(--ink-2)">
+          <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;font-weight:600;margin-bottom:3px">Current Tunnel</div>
+          <code id="tunnelUrl" style="color:#fff;font-size:12.5px;font-family:Consolas,monospace;word-break:break-all">— waiting for tunnel to report URL —</code>
+        </div>
+        <button class="tbtn wci" onclick="copyWebhook('wci')">📋 Load WCI</button>
+        <button class="tbtn ifs" onclick="copyWebhook('india')">📋 Load IFS</button>
+        <button class="tbtn cci" onclick="copyWebhook('cci')">📋 Load CCI</button>
+        <button class="tbtn test" onclick="testPipe()">✅ Test Pipe</button>
+      </div>
+      <div id="tunnelHelp" style="padding:8px 16px;font-size:11px;color:var(--muted);border-top:1px solid var(--line);background:rgba(255,255,255,.015)">
+        Paste the copied URL into TradingView → your alert → Notifications tab → Webhook URL field.
+      </div>
+    </div>
+    <style>
+      .tbtn{background:var(--panel-2);border:1px solid var(--line);color:var(--ink);padding:7px 12px;border-radius:4px;font-size:11.5px;font-weight:600;cursor:pointer;letter-spacing:.3px;transition:all .15s}
+      .tbtn:hover{background:rgba(255,255,255,.04);border-color:var(--ink-2)}
+      .tbtn.wci{border-left:3px solid var(--info)}
+      .tbtn.ifs{border-left:3px solid var(--warn)}
+      .tbtn.cci{border-left:3px solid var(--purple)}
+      .tbtn.test{border-left:3px solid var(--bull)}
+      .tbtn.copied{background:var(--bull-bg);border-color:var(--bull);color:var(--bull)}
+      .tunnel-live{color:var(--bull)} .tunnel-pending{color:var(--warn)} .tunnel-offline{color:var(--bear)}
+    </style>
+
+    <div class="topbar">
+      <h1>Cockpit <span class="user">— Chandramouli N.</span></h1>
+      <div style="display:flex;gap:10px;align-items:center">
+        <button id="themeBtn" title="Toggle theme" onclick="toggleTheme()" style="background:var(--panel-2);border:1px solid var(--line);color:var(--ink);padding:6px 12px;border-radius:4px;cursor:pointer;font-size:13px">🌙 Dark</button>
+        <span class="mode-badge">● Paper Mode — No Live Orders</span>
+      </div>
+    </div>
+
+    <!-- KPI CARDS -->
+    <div class="cards">
+      <div class="card info" id="cEquity"><div class="label">Equity (Paper)</div><div class="value" id="equity">₹5,00,000</div><div class="sub" id="equityChange">Starting capital</div></div>
+      <div class="card" id="cDay"><div class="label">Today P&L</div><div class="value" id="dayPnl">₹0</div><div class="sub" id="dayPct">0.00%</div></div>
+      <div class="card" id="cTotal"><div class="label">Total P&L · R</div><div class="value" id="totalPnl">₹0 · 0R</div><div class="sub" id="totalPct">0.00% since inception</div></div>
+      <div class="card info"><div class="label">Portfolio Heat</div><div class="value" id="heat">₹0 <span style="font-size:12px;color:var(--muted)">/ ₹30,000</span></div><div class="sub">0% of max 6%</div></div>
+    </div>
+
+    <!-- REGIME + CRISIS -->
+    <div class="panel" id="regime">
+      <h2>Regime & Crisis Index <span class="count" id="regimeDate">as of 2026-04-17 close</span></h2>
+      <div class="regime">
+        <div class="item"><span class="k">Nifty 50</span><span class="v bull">24,353.55 <span style="font-size:11px">+0.65%</span></span></div>
+        <div class="item"><span class="k">Bank Nifty</span><span class="v bull">56,565.70 <span style="font-size:11px">+0.85%</span></span></div>
+        <div class="item"><span class="k">India VIX</span><span class="v warn">17.21</span></div>
+        <div class="item"><span class="k">Regime</span><span class="v warn">Oversold bounce / risk-off overlay</span></div>
+      </div>
+      <div class="gauges">
+        <div class="gauge" id="wciGauge">
+          <div class="header"><span class="title">WCI — World Crisis</span><span class="score" id="wciScore">—</span></div>
+          <div class="bar"><div class="fill" style="width:100%"></div><div class="pointer" id="wciPtr" style="left:0%"></div></div>
+          <div class="meta">
+            <span class="level alert" id="wciLevel">—</span>
+            <span class="dir" id="wciDir">—</span>
+            <span>Action: <strong id="wciAction">—</strong></span>
+            <span id="wciStale"></span>
+          </div>
+          <div style="margin-top:7px;font-size:11px;color:var(--muted)" id="wciNarr">—</div>
+        </div>
+        <div class="gauge" id="ifsGauge">
+          <div class="header"><span class="title">IFS — India Stress</span><span class="score" id="ifsScore">—</span></div>
+          <div class="bar"><div class="fill" style="width:100%"></div><div class="pointer" id="ifsPtr" style="left:0%"></div></div>
+          <div class="meta">
+            <span class="level alert" id="ifsLevel">—</span>
+            <span class="dir" id="ifsDir">—</span>
+            <span>Action: <strong id="ifsAction">—</strong></span>
+            <span id="ifsStale"></span>
+          </div>
+          <div style="margin-top:7px;font-size:11px;color:var(--muted)" id="ifsNarr">—</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- WATCHED TRADES -->
+    <div class="panel highlight" id="watched">
+      <h2>⭐ Watched Trades <span class="count">Monday 2026-04-20 pre-open · levels = engine plan, subject to pullback scan</span></h2>
+      <div class="watched">
+        <div class="wcell aplus">
+          <div class="whead">
+            <div class="wname">BEL <span class="ltp" id="belLtp">₹462.75</span></div>
+            <div><span class="chip grade-aplus">A+ · #1</span></div>
+          </div>
+          <div class="wchart" id="chart-bel"></div>
+          <div class="wmeta"><span class="rr">R:R <strong>2.1</strong></span><span class="chip buy">LONG</span><span class="chip mis">CNC SWING</span></div>
+          <div class="wlvls">
+            <div class="lvl entry"><div class="lk">Entry</div><div class="lv">464.50</div></div>
+            <div class="lvl stop"><div class="lk">Stop</div><div class="lv">448.00</div></div>
+            <div class="lvl target"><div class="lk">Target</div><div class="lv">499.00</div></div>
+          </div>
+          <div class="wthesis"><strong style="color:var(--bull)">Thesis:</strong> Defense leader · war beneficiary · 20-EMA reclaim · closed at 3-week high on volume. Break of 463.75 confirms continuation. Risk ₹10k · Qty ~600.</div>
+        </div>
+        <div class="wcell a">
+          <div class="whead">
+            <div class="wname">HAL <span class="ltp" id="halLtp">₹4,388.10</span></div>
+            <div><span class="chip grade-a">A · #2</span></div>
+          </div>
+          <div class="wchart" id="chart-hal"></div>
+          <div class="wmeta"><span class="rr">R:R <strong>2.0</strong></span><span class="chip buy">LONG</span><span class="chip mis">CNC SWING</span></div>
+          <div class="wlvls">
+            <div class="lvl entry"><div class="lk">Entry</div><div class="lv">4,400</div></div>
+            <div class="lvl stop"><div class="lk">Stop</div><div class="lv">4,240</div></div>
+            <div class="lvl target"><div class="lk">Target</div><div class="lv">4,725</div></div>
+          </div>
+          <div class="wthesis"><strong style="color:var(--bull)">Thesis:</strong> Defense · strong 3-day recovery from 3,487 low · broke 20-EMA decisively Apr 8. Entry above today's high. Risk ₹10k · Qty ~60.</div>
+        </div>
+        <div class="wcell a">
+          <div class="whead">
+            <div class="wname">GOLDBEES <span class="ltp" id="goldLtp">₹124.80</span></div>
+            <div><span class="chip grade-a">A · #3</span></div>
+          </div>
+          <div class="wchart" id="chart-gold"></div>
+          <div class="wmeta"><span class="rr">R:R <strong>1.9</strong></span><span class="chip buy">LONG</span><span class="chip cnc">CNC ETF</span></div>
+          <div class="wlvls">
+            <div class="lvl entry"><div class="lk">Entry</div><div class="lv">126.50</div></div>
+            <div class="lvl stop"><div class="lk">Stop</div><div class="lv">122.50</div></div>
+            <div class="lvl target"><div class="lk">Target</div><div class="lv">134.00</div></div>
+          </div>
+          <div class="wthesis"><strong style="color:var(--bull)">Thesis:</strong> Safe-haven bid · WCI narrative "gold rush" confirmed · range breakout setup. Entry on 126.50 break of Feb highs. Risk ₹10k · Qty ~2,500.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MARKET CONTEXT (dimmed reference) -->
+    <div class="panel dim" id="context">
+      <h2>Market Context <span class="count">Reference only · Kite data · cycle refresh</span></h2>
+      <div class="charts-dim">
+        <div class="chart-cell-dim">
+          <div class="ct"><span>NIFTY 50</span><span id="niftyTag"></span></div>
+          <div class="mc-chart" id="chart-nifty"></div>
+        </div>
+        <div class="chart-cell-dim">
+          <div class="ct"><span>BANK NIFTY</span><span id="bankTag"></span></div>
+          <div class="mc-chart" id="chart-banknifty"></div>
+        </div>
+        <div class="chart-cell-dim">
+          <div class="ct"><span>INDIA VIX</span><span id="vixTag"></span></div>
+          <div class="mc-chart" id="chart-vix"></div>
+        </div>
+        <div class="chart-cell-dim">
+          <div class="ct"><span>USD/INR</span><span style="color:var(--muted);font-weight:400;font-size:10px">TV · live</span></div>
+          <div class="mc-chart" id="tv-inr"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SETUP SCANNER -->
+    <div class="panel" id="scanner">
+      <h2>Setup Scanner <span class="count">Ranked for Monday 2026-04-20 · top 3 active</span></h2>
+      <div class="scan-row hdr"><span>#</span><span>Symbol</span><span>Setup</span><span class="num">Grade</span><span class="num">R:R</span><span>Thesis</span></div>
+      <div class="scan-row top"><span class="rank">1</span><span class="sym">BEL</span><span>Pullback / Break Long</span><span class="num"><span class="chip grade-aplus">A+</span></span><span class="num">2.1</span><span style="color:var(--ink-2)">Defense leader · war beneficiary · 20-EMA reclaim · volume</span></div>
+      <div class="scan-row top"><span class="rank">2</span><span class="sym">HAL</span><span>Trend Long</span><span class="num"><span class="chip grade-a">A</span></span><span class="num">2.0</span><span style="color:var(--ink-2)">Defense · 3-day strong recovery · 20-EMA reclaimed decisively</span></div>
+      <div class="scan-row top"><span class="rank">3</span><span class="sym">GOLDBEES</span><span>Range Breakout</span><span class="num"><span class="chip grade-a">A</span></span><span class="num">1.9</span><span style="color:var(--ink-2)">Safe haven · "gold rush" narrative · Feb-high breakout</span></div>
+      <div class="scan-row"><span class="rank">4</span><span class="sym">ONGC</span><span>Trend Long</span><span class="num"><span class="chip grade-b">B+</span></span><span class="num">2.1</span><span style="color:var(--ink-2)">Oil upstream · crude tailwind (not A+, pattern incomplete)</span></div>
+      <div class="scan-row"><span class="rank">5</span><span class="sym">INFY</span><span>Pullback Long</span><span class="num"><span class="chip grade-b">B+</span></span><span class="num">2.0</span><span style="color:var(--ink-2)">INR weakness beneficiary · digesting, needs one more bar</span></div>
+      <div class="scan-row"><span class="rank">6</span><span class="sym">TCS</span><span>Trend Long</span><span class="num"><span class="chip grade-b">B</span></span><span class="num">1.9</span><span style="color:var(--ink-2)">Near resistance · not clean entry</span></div>
+      <div class="scan-row"><span class="rank">7</span><span class="sym">IOC</span><span>Short Setup</span><span class="num"><span class="chip grade-c">C</span></span><span class="num">1.5</span><span style="color:var(--ink-2)">Short against broader bounce — risky against regime</span></div>
+    </div>
+
+    <!-- SECTOR SIGNALS compact 3-col -->
+    <div class="panel" id="signals">
+      <h2>Sector Signals <span class="count">Go / Watch / NoGo posture for current regime</span></h2>
+      <div class="sig-grid">
+        <div class="sig-col go">
+          <h3>🟢 Go (5)</h3>
+          <ul>
+            <li><strong>Defense</strong><span class="names">HAL · BEL · BDL</span></li>
+            <li><strong>Oil upstream</strong><span class="names">ONGC · OIL</span></li>
+            <li><strong>Gold / Silver</strong><span class="names">GOLDBEES</span></li>
+            <li><strong>IT Services</strong><span class="names">TCS · INFY</span></li>
+            <li><strong>Pharma</strong><span class="names">Sun · Cipla</span></li>
+          </ul>
+        </div>
+        <div class="sig-col watch">
+          <h3>🟡 Watch (3)</h3>
+          <ul>
+            <li><strong>Pvt Banks</strong><span class="names">HDFC · ICICI</span></li>
+            <li><strong>Auto</strong><span class="names">Maruti · TM</span></li>
+            <li><strong>Metals</strong><span class="names">TATA · HINDAL</span></li>
+          </ul>
+        </div>
+        <div class="sig-col nogo">
+          <h3>🔴 NoGo (4)</h3>
+          <ul>
+            <li><strong>Aviation</strong><span class="names">IndiGo</span></li>
+            <li><strong>Paints</strong><span class="names">Asian Paints</span></li>
+            <li><strong>OMCs</strong><span class="names">IOC · HPCL</span></li>
+            <li><strong>Realty</strong><span class="names">DLF</span></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- POSITIONS -->
+    <div class="panel" id="positions">
+      <h2>Positions <span class="count" id="posCount">0 open</span></h2>
+      <table>
+        <thead><tr><th>Instrument</th><th>Product</th><th>Side</th><th class="num">Qty</th><th class="num">Avg</th><th class="num">LTP</th><th class="num">P&L ₹</th><th class="num">R</th><th class="num">Chg%</th></tr></thead>
+        <tbody id="posBody"><tr><td colspan="9" class="empty">No open positions · capital idle</td></tr></tbody>
+      </table>
+    </div>
+
+    <!-- DECISION LOG -->
+    <div class="panel" id="decisions">
+      <h2>Decision Log <span class="count">Last 5 cycles</span></h2>
+      <div>
+        <div class="log-entry"><span class="ts">16:30 IST<br>Apr 17</span><span><span class="chip learn">LEARN</span></span><span class="msg">WCI methodology absorbed (5 modules · 5 bands · convergence). Posture rules now bound to authoritative bands.</span></div>
+        <div class="log-entry"><span class="ts">16:05 IST<br>Apr 17</span><span><span class="chip signal">SIGNAL</span></span><span class="msg">Crisis indices polled live from user TV webhooks. <span class="why">WCI 37.8 WARNING retreating · IFS 32.5 ALERT rising. India is weaker link.</span></span></div>
+        <div class="log-entry"><span class="ts">15:45 IST<br>Apr 17</span><span><span class="chip regime">REGIME</span></span><span class="msg">Regime downgraded Medium → LOW. <span class="why">News revealed Day 49 US-Iran war + Europe jet-fuel crisis.</span></span></div>
+        <div class="log-entry"><span class="ts">15:40 IST<br>Apr 17</span><span><span class="chip skip">SKIP</span></span><span class="msg">No trade today. <span class="why">Market closed before data access. Discipline > activity.</span></span></div>
+        <div class="log-entry"><span class="ts">15:30 IST<br>Apr 17</span><span><span class="chip regime">REGIME</span></span><span class="msg">Initial classification: oversold bounce off Mar-30 low. <span class="why">Nifty +9% in 11 sessions. BankNifty leading. Provisional bullish bias.</span></span></div>
+      </div>
+    </div>
+
+    <!-- PERFORMANCE + LEARNING collapsed -->
+    <div class="panel" id="perf">
+      <h2>Performance & Learning <span class="count">Awaiting first trades · expands as data lands</span></h2>
+      <div class="collapsed-stub">
+        <strong>0 trades closed · 7 event predictions open</strong><br>
+        Performance metrics (win rate, expectancy in R, profit factor, max DD) populate once the first trade closes.<br>
+        Learning Loop (pattern hit rates, calibration plot) populates from Monday T+1 outcomes of 7 pending event predictions.
+      </div>
+    </div>
+
+    <footer>Strategy V1.2 · <span class="lock">Paper-only lock in effect</span> · Cockpit rendered at cycle close</footer>
+  </main>
+</div>
+
+<!-- TradingView for USD/INR only -->
+<script src="https://s3.tradingview.com/tv.js"></script>
+<script>
+try{
+  new TradingView.widget({autosize:true,symbol:"FX:USDINR",interval:"D",timezone:"Asia/Kolkata",theme:"dark",style:"1",locale:"en",toolbar_bg:"#0f1115",enable_publishing:false,hide_top_toolbar:true,hide_legend:true,save_image:false,container_id:"tv-inr"});
+}catch(e){}
+
+// ============= KITE SVG CANDLE DATA =============
+const KITE_DATA = {
+  nifty: [["01-20",25580.3,25585,25171.35,25232.5],["01-21",25141,25300.95,24919.8,25157.5],["01-22",25344.15,25435.75,25168.5,25289.9],["01-23",25344.6,25347.95,25025.3,25048.65],["01-27",25063.35,25246.65,24932.55,25175.4],["01-28",25258.85,25372.1,25187.65,25342.75],["01-29",25345,25458.15,25159.8,25418.9],["01-30",25247.55,25370.7,25213.65,25320.65],["02-01",25333.75,25440.9,24571.75,24825.45],["02-02",24796.5,25108.1,24679.4,25088.4],["02-03",26308.05,26341.2,25641.3,25727.55],["02-04",25675.05,25818.55,25563.95,25776],["02-05",25755.9,25757.65,25579.5,25642.8],["02-06",25605.8,25703.95,25491.9,25693.7],["02-09",25888.7,25922.25,25780.9,25867.3],["02-10",25922.65,25989.45,25870.45,25935.15],["02-11",25997.45,26009.4,25899.8,25953.85],["02-12",25906.7,25906.7,25752.4,25807.2],["02-13",25571.15,25630.35,25444.3,25471.1],["02-16",25423.6,25697,25372.7,25682.75],["02-17",25637.95,25764.4,25570.3,25725.4],["02-18",25752.65,25828.05,25645.15,25819.35],["02-19",25873.35,25885.3,25388.75,25454.35],["02-20",25406.55,25663.55,25379.75,25571.25],["02-23",25678.4,25771.45,25609.35,25713],["02-24",25641.8,25641.8,25327.6,25424.65],["02-25",25512.6,25652.6,25428.2,25482.5],["02-26",25556.3,25572.95,25400.95,25496.55],["02-27",25459.85,25476.4,25141.3,25178.65],["03-02",24659.25,24989.35,24603.5,24865.7],["03-04",24388.8,24602.45,24305.4,24480.5],["03-05",24615.95,24854.2,24529.4,24765.9],["03-06",24656.4,24700.8,24415.75,24450.45],["03-09",23868.05,24078.15,23697.8,24028.05],["03-10",24280.8,24303.8,24079.95,24261.6],["03-11",24231.85,24299,23834.3,23866.85],["03-12",23674.85,23833.15,23556.3,23639.15],["03-13",23462.5,23492.4,23112,23151.1],["03-16",23116.1,23502,22955.25,23408.8],["03-17",23493.2,23656.8,23346.6,23581.15],["03-18",23632.9,23862.25,23618.45,23777.8],["03-19",23197.75,23378.7,22930.35,23002.15],["03-20",23110.15,23345.15,23067.6,23114.5],["03-23",22824.35,22851.7,22471.25,22512.65],["03-24",22878.45,23057.3,22624.2,22912.4],["03-25",23064.4,23465.35,23063.2,23306.45],["03-27",23173.55,23186.1,22804.55,22819.6],["03-30",22549.65,22714.1,22283.85,22331.4],["04-01",22899,22941.3,22618.6,22679.4],["04-02",22383.4,22782.3,22182.55,22713.1],["04-06",22780.3,22998.35,22542.95,22968.25],["04-07",22838.7,23153.85,22719.3,23123.65],["04-08",23855.15,24025.15,23828.5,23997.35],["04-09",23909.05,23990.75,23682.8,23775.1],["04-10",23880.55,24074.05,23856.35,24050.6],["04-13",23589.6,23907.4,23555.6,23842.65],["04-15",24163.8,24280.9,24145.8,24231.3],["04-16",24385.2,24400.95,24102.8,24196.75],["04-17",24165.9,24371.9,24096.05,24353.55]],
+  banknifty:[["01-20",59851.4,59993.5,59283.95,59404.2],["01-21",59142,59447.35,58278.6,58800.3],["01-22",59194.25,59573.1,58823.05,59200.1],["01-23",59305.15,59400.15,58346.25,58473.1],["01-27",58366.05,59436.8,58121.6,59205.45],["01-28",59575.65,59699.9,59240.1,59598.8],["01-29",59416.25,60060.7,59339,59957.85],["01-30",59542.25,59906.9,59501.8,59610.45],["02-01",59607.65,59865.7,57783.2,58417.2],["02-02",58239.3,58687.05,57829.85,58619],["02-03",61411.2,61764.85,59793.2,60041.3],["02-04",60163.35,60389.4,59891.75,60238.15],["02-05",60315.35,60328.3,59881.05,60063.65],["02-06",59967.1,60149.9,59644.55,60120.55],["02-09",60805.2,60876.2,60495.7,60669.35],["02-10",60740.8,60797.55,60531.55,60626.4],["02-11",60670.25,60779.95,60444.65,60745.35],["02-12",60786.15,60864.4,60597.65,60739.75],["02-13",60504.4,60621.9,60073.55,60186.65],["02-16",59947.8,61011.3,59861.1,60949.1],["02-17",60821.15,61241.6,60560,61174],["02-18",61255.35,61596.85,61100.9,61550.8],["02-19",61660.85,61678.8,60592.9,60739.55],["02-20",60627.85,61360.5,60562.35,61172],["02-23",61145.55,61517.8,61029.15,61264.25],["02-24",61392.1,61435.65,60801.85,61047.3],["02-25",61175.05,61317.55,60816.75,61043.35],["02-26",61193.9,61284.75,60813.3,61187.7],["02-27",61057.45,61086.45,60438.95,60529],["03-02",59204.3,60177.5,59148,59839.65],["03-04",58447.15,59058.4,58393.55,58755.25],["03-05",59008.25,59274.35,58506.4,59055.85],["03-06",58629.6,58807.15,57696.4,57783.25],["03-09",56121.4,56274.15,55270.6,56019.8],["03-10",56583.85,57097.05,56387.2,56950.8],["03-11",56790.4,56938.4,55631.95,55735.75],["03-12",55008.2,55636.95,54760.55,55100.95],["03-13",54592.05,54713.75,53675.7,53757.85],["03-16",53721.5,54664.15,53258.15,54413.4],["03-17",54649.1,54996,54113.15,54876],["03-18",54927.05,55554.15,54689.1,55326.05],["03-19",53474.55,54150.3,53240.6,53451],["03-20",53548.2,54382.45,53297.55,53427.05],["03-23",52576.1,52665.3,51323.6,51437.75],["03-24",52384.8,52949.15,51827.5,52605.65],["03-25",53024.75,54146.15,53024.75,53708.1],["03-27",53244.25,53292.5,52211.2,52274.6],["03-30",51527.9,51624.5,50105.25,50275.35],["04-01",51433.9,52025.85,51133.55,51448.65],["04-02",50625.65,51731.95,49954.85,51548.75],["04-06",51747.6,52704.55,51111.1,52609.1],["04-07",52258.7,52778.2,51868.45,52716.25],["04-08",54904.45,55778.25,54797.5,55703.9],["04-09",55505.95,55583.1,54626.85,54821.7],["04-10",55182.25,55978.5,55145.25,55912.75],["04-13",54646,55752.65,54356.2,55605.05],["04-15",56343.45,56786.25,56109.2,56301.95],["04-16",56657.25,56834.25,55898.25,56086.4],["04-17",56072.4,56628.7,55841.65,56565.7]],
+  vix:[["01-20",11.83,12.9,11,12.73],["01-21",12.73,14.43,12.43,13.78],["01-22",13.78,14.33,12.91,13.35],["01-23",13.35,14.43,12.28,14.19],["01-27",14.19,16.06,13.92,14.45],["01-28",14.45,14.51,13.44,13.53],["01-29",13.53,14.19,13.07,13.37],["01-30",13.37,14.23,12.88,13.63],["02-01",13.63,16.11,13.35,15.1],["02-02",15.1,15.55,13.58,13.87],["02-03",13.87,15.47,11.85,12.9],["02-04",12.9,13.15,12.06,12.25],["02-05",12.25,12.55,10.94,12.17],["02-06",12.17,12.35,11.16,11.94],["02-09",11.94,12.28,10.67,12.19],["02-10",12.19,12.19,10.36,11.67],["02-11",11.67,11.71,10.56,11.55],["02-12",11.55,12.11,10.85,11.73],["02-13",11.73,13.58,10.96,13.29],["02-16",13.29,13.83,13.24,13.33],["02-17",13.33,13.48,11.63,12.67],["02-18",12.67,12.77,11.35,12.22],["02-19",12.22,13.68,9.73,13.46],["02-20",13.46,14.78,13.1,14.36],["02-23",14.36,14.48,12.77,14.17],["02-24",14.17,14.95,12.35,14.15],["02-25",14.15,14.15,12.84,13.49],["02-26",13.49,13.61,11.81,13.06],["02-27",13.06,14.04,11.2,13.7],["03-02",13.7,17.81,12.83,17.13],["03-04",17.13,21.37,16.97,21.14],["03-05",21.14,21.14,17.3,17.86],["03-06",17.86,20.14,17.2,19.88],["03-09",19.88,24.49,19.22,23.36],["03-10",23.36,23.36,18.78,18.91],["03-11",18.91,21.39,17.24,21.06],["03-12",21.06,22.36,20.82,21.52],["03-13",21.52,22.88,21.25,22.65],["03-16",22.65,22.88,19.82,21.6],["03-17",21.6,21.6,19.63,19.79],["03-18",19.79,19.79,18.59,18.72],["03-19",18.72,23.2,18.72,22.8],["03-20",22.8,23.14,21.69,22.81],["03-23",22.81,27.17,22.81,26.73],["03-24",26.73,26.73,24.63,24.74],["03-25",24.74,25.23,24.14,24.64],["03-27",24.64,27.09,23.39,26.8],["03-30",26.8,28.91,26.8,27.89],["04-01",27.89,27.89,23.65,25.01],["04-02",25.01,26.6,25.01,25.52],["04-06",25.52,26.56,25.08,25.47],["04-07",25.47,26.26,24.55,24.7],["04-08",24.7,24.7,19.31,19.7],["04-09",19.7,20.94,19.17,20.43],["04-10",20.43,20.43,18.37,18.85],["04-13",18.85,21.51,18.18,20.5],["04-15",20.5,20.5,17.34,18.67],["04-16",18.67,18.67,16.83,18.09],["04-17",18.09,18.47,16.59,17.21]],
+  bel:[["01-20",413.9,415.4,406,409.35],["01-21",406.5,409.5,397,402.65],["01-22",406,418.3,406,417.3],["01-23",419,419,408.5,410.7],["01-27",416.45,419.25,411.6,415.95],["01-28",418,457.5,417.3,453],["01-29",454.25,455.95,438.25,444.5],["01-30",446.85,451.95,439.3,449],["02-01",455,461.65,404.1,425.35],["02-02",432,441.35,420.25,439.1],["02-03",460,460,435.25,438.95],["02-04",436.8,443.4,433.8,439.2],["02-05",439,439,428.15,432.9],["02-06",433,433.4,425.55,429.65],["02-09",432,439.6,429.5,437.3],["02-10",438,441.3,433.55,437.3],["02-11",438.7,438.7,434.35,437.55],["02-12",437,444.95,434.6,443.9],["02-13",443.9,446.2,432.8,435.55],["02-16",433.05,438.6,429.1,438],["02-17",442,449.35,440.3,446.85],["02-18",450,453.5,446.15,447.7],["02-19",447.7,449.25,432.95,435.35],["02-20",435,445.4,433.7,441.15],["02-23",442.8,445.3,435.7,439.75],["02-24",437,437.5,430.35,435.05],["02-25",435,441,433.55,439.3],["02-26",440.6,449.9,440,449.05],["02-27",448.6,449,441.7,444.7],["03-02",442.1,456.7,441.7,453.95],["03-04",460,460.85,444.5,446.85],["03-05",448.8,467.9,445.85,460],["03-06",462,473.45,460.35,468.45],["03-09",470,470,450,457.35],["03-10",465,465.8,453.55,463.35],["03-11",463.5,469.8,453.25,454.1],["03-12",452,455,448.5,453.55],["03-13",451.9,452.4,433.65,439.4],["03-16",431.9,437.8,422.25,429.5],["03-17",432.45,441.05,430.3,439.35],["03-18",445.45,447.75,440.5,442.6],["03-19",436.1,439,428.4,430.8],["03-20",432.2,438.95,424.7,426.1],["03-23",420.6,421.75,404,405.5],["03-24",412.5,417.45,408.75,414.45],["03-25",416.3,422,412.55,413.45],["03-27",411.9,413.45,403.25,404.75],["03-30",400,413.25,399.35,400.65],["04-01",415,430.2,412.65,418.7],["04-02",417,423.6,407.5,421.6],["04-06",422,428.05,420,427.15],["04-07",424,429,420.65,427.8],["04-08",440,440,428.8,433.1],["04-09",425,443.3,424.5,439.75],["04-10",444.1,447.45,440.45,442.45],["04-13",435,445.5,434,441.55],["04-15",447.5,449.2,444.8,447.65],["04-16",449.85,457,448.9,455.65],["04-17",458,463.75,454.45,462.75]],
+  hal:[["01-20",4504.3,4525,4327,4355.2],["01-21",4315,4337.6,4235,4259.4],["01-22",4299,4367,4290.6,4353.2],["01-23",4375,4375,4294.4,4305.7],["01-27",4349.9,4377.3,4271.7,4348.5],["01-28",4370,4638.6,4361.5,4624],["01-29",4659,4670,4553.1,4601],["01-30",4620,4634.8,4541,4619.4],["02-01",4659,4710,4165,4376.9],["02-02",4415,4453.8,4207.1,4338.7],["02-03",4500,4608.1,4410.1,4470.4],["02-04",4410,4413,4097.6,4217.1],["02-05",4121,4125,3952,4035.5],["02-06",4030,4074,3985,4067.5],["02-09",4066.1,4151,4014.1,4131],["02-10",4151,4189.8,4137.2,4168.3],["02-11",4195.9,4195.9,4107,4133],["02-12",4136.7,4189.8,4083.2,4158.9],["02-13",4189,4263.5,4155.8,4212.4],["02-16",4228.7,4235.5,4170,4226.1],["02-17",4230,4296,4222.4,4247.6],["02-18",4235,4267.5,4182.1,4251.1],["02-19",4244.1,4271,4101.6,4132.6],["02-20",4129.8,4213.5,4121.2,4170],["02-23",4150,4150,3976,4025.4],["02-24",4005,4032.4,3937.1,3952.6],["02-25",3970,4004,3957.6,3985],["02-26",4000,4018,3985,4008.9],["02-27",4001,4001,3900,3913.2],["03-02",3837,3983,3825.5,3951.6],["03-04",3971.3,3974,3858.7,3876.8],["03-05",3870,3949,3840.9,3891.8],["03-06",3880,4039.7,3855,4023.7],["03-09",4023.7,4023.7,3925,3989.9],["03-10",4025,4063,3918,4040.1],["03-11",4040,4103.8,3976.2,4005.1],["03-12",3955,4033.2,3940.8,4013.5],["03-13",4000,4004.1,3892.4,3914.4],["03-16",3914.4,3938.8,3843,3913.1],["03-17",3919.7,3971.9,3892.5,3963.1],["03-18",3973,3991.6,3945,3961.6],["03-19",3930,3930,3786,3802.5],["03-20",3826,3882,3776.6,3782.4],["03-23",3760.6,3762.8,3610,3634.6],["03-24",3700,3723.3,3620.7,3654],["03-25",3693,3729.9,3661,3669.4],["03-27",3665,3665,3576.1,3588.6],["03-30",3551,3615.6,3479.1,3487.2],["04-01",3581.4,3688.6,3545,3670.8],["04-02",3638.2,3700.1,3551,3687],["04-06",3713.5,3762.5,3661,3752.1],["04-07",3744.1,3822,3702.4,3796.2],["04-08",3900,3917,3850,3907.5],["04-09",3900,4109,3882.3,4032.9],["04-10",4068,4138.6,4063,4112.2],["04-13",4039.9,4119.5,4013.3,4099.9],["04-15",4160,4242,4147,4239.2],["04-16",4284.8,4388,4280.2,4363.4],["04-17",4380,4399.4,4346.6,4388.1]],
+  goldbees:[["01-20",121.99,126.9,120.2,125.86],["01-21",127,135.9,127,134.97],["01-22",131.44,131.84,119,124.34],["01-23",129.1,132.48,126,127.42],["01-27",130.55,134,129.03,131.45],["01-28",132,137.1,132,135.82],["01-29",143,148.14,141.64,146.53],["01-30",138.7,142.8,127.1,131.12],["02-01",120.35,124.88,115.66,122.31],["02-02",121.99,122,112.1,118.67],["02-03",120.1,126.8,120,125.2],["02-04",128.25,132,128.1,129.6],["02-05",125.88,126.19,121.61,125.22],["02-06",123.89,125.58,121.55,125.04],["02-09",129.1,129.9,127.4,127.98],["02-10",127.98,128.44,127.68,128.34],["02-11",128.34,130,127.9,128.7],["02-12",129,129.27,128.1,128.52],["02-13",126.5,126.78,124,126.1],["02-16",127.08,127.08,125.82,126.92],["02-17",126,126.19,123.39,124.58],["02-18",124.21,125.38,124.21,124.64],["02-19",126.11,128,126.11,127.09],["02-20",126.88,127.7,123.91,127.54],["02-23",130.72,132,129.3,130],["02-24",130.11,134,130.11,131.22],["02-25",131.1,132,130.64,131.69],["02-26",132.69,133.79,130,130.48],["02-27",130.7,131.8,130.65,131.6],["03-02",140.1,142,135.23,138.32],["03-04",134.4,135.3,104.72,133.96],["03-05",136,137.3,131.25,132.24],["03-06",132.31,132.31,130.61,130.82],["03-09",129.89,132.18,125.86,131.35],["03-10",131.51,132.78,131.51,132.2],["03-11",133.43,133.44,132.33,132.71],["03-12",131.9,132.65,131.54,132.43],["03-13",131.38,131.38,129.87,130.32],["03-16",128,128.87,126.86,127.22],["03-17",127.82,129.08,127.82,128.22],["03-18",127.88,128.07,127.11,127.91],["03-19",125.88,125.88,120.73,121.32],["03-20",122.67,122.67,120.05,121.06],["03-23",116.64,117,107.13,110.72],["03-24",111.62,116.59,111.62,115.49],["03-25",118.37,119.88,118.37,119.29],["03-27",118.34,118.86,116.52,117.53],["03-30",120.43,121.8,117.92,121.19],["04-01",125.62,125.62,123.02,123.37],["04-02",123.13,123.3,119,120.58],["04-06",120.89,123.01,120.32,122.81],["04-07",122.23,122.26,120.8,121.78],["04-08",125.18,125.68,123.75,124.39],["04-09",122.97,123.48,122.2,123.21],["04-10",123.52,124.38,122.87,123.49],["04-13",123.44,124.35,122.73,123.76],["04-15",125.75,126,124.89,125.06],["04-16",125.32,126.47,125.32,125.61],["04-17",125.26,125.26,124.23,124.8]]
+};
+
+function ema(series, period){
+  const k = 2/(period+1), out = [];
+  let prev = null;
+  for(let i=0;i<series.length;i++){
+    const c = series[i][4];
+    if(prev===null) prev = c; else prev = c*k + prev*(1-k);
+    out.push(i>=period-1 ? prev : null);
+  }
+  return out;
+}
+
+function candleChart(containerId, series, opts){
+  const el = document.getElementById(containerId); if(!el) return;
+  const data = series.slice(-50);
+  const W=500, H=160, padL=44, padR=55, padT=8, padB=18;
+  opts = opts || {};
+  const iw = W-padL-padR, ih = H-padT-padB;
+  // Extend range to include overlay levels (entry/stop/target)
+  let minY = Math.min(...data.map(d=>d[3])), maxY = Math.max(...data.map(d=>d[2]));
+  if(opts.levels){
+    opts.levels.forEach(l=>{ if(l.v<minY)minY=l.v; if(l.v>maxY)maxY=l.v; });
+  }
+  minY *= 0.998; maxY *= 1.002;
+  const range = maxY-minY || 1;
+  const cw = iw/data.length, bw = Math.max(1.2, cw*0.65);
+  const y = v => padT + ih - ((v-minY)/range)*ih;
+  const x = i => padL + i*cw + cw/2;
+  const emaArr = ema(data, 20);
+  let emaPath = "";
+  for(let i=0;i<emaArr.length;i++) if(emaArr[i]!==null) emaPath += (emaPath?" L":"M") + x(i) + "," + y(emaArr[i]);
+  const candles = data.map((d,i)=>{
+    const [_,o,h,l,c] = d;
+    const up = c>=o, color = up?'#00c26e':'#ff3b5c';
+    const yo=y(o),yc=y(c),yh=y(h),yl=y(l);
+    const bTop = Math.min(yo,yc), bH = Math.max(1.2, Math.abs(yc-yo));
+    return `<line x1="${x(i)}" y1="${yh}" x2="${x(i)}" y2="${yl}" stroke="${color}" stroke-width="1"/><rect x="${x(i)-bw/2}" y="${bTop}" width="${bw}" height="${bH}" fill="${color}"/>`;
+  }).join('');
+  const grid = [0.5].map(p=>{
+    const gy = padT+ih*p, val = maxY-range*p;
+    return `<line x1="${padL}" y1="${gy}" x2="${padL+iw}" y2="${gy}" stroke="#242a35" stroke-dasharray="2,3"/><text x="${padL-4}" y="${gy+3}" fill="#6b7280" font-size="8.5" text-anchor="end">${opts.fmt(val)}</text>`;
+  }).join('');
+  const axisLabels = `<text x="${padL-4}" y="${padT+7}" fill="#aeb7c3" font-size="8.5" text-anchor="end">${opts.fmt(maxY)}</text><text x="${padL-4}" y="${padT+ih}" fill="#aeb7c3" font-size="8.5" text-anchor="end">${opts.fmt(minY)}</text>`;
+  const last = data[data.length-1][4];
+  const prev = data.length>1 ? data[data.length-2][4] : last;
+  const lastY = y(last), lastUp = last>=prev;
+  const priceLine = `<line x1="${padL}" y1="${lastY}" x2="${padL+iw}" y2="${lastY}" stroke="${lastUp?'#00c26e':'#ff3b5c'}" stroke-dasharray="4,2" opacity="0.75"/><rect x="${padL+iw+2}" y="${lastY-8}" width="50" height="16" fill="${lastUp?'#00c26e':'#ff3b5c'}" rx="2"/><text x="${padL+iw+27}" y="${lastY+4}" fill="#fff" font-size="10" font-weight="700" text-anchor="middle">${opts.fmt(last)}</text>`;
+  // Overlay levels: entry (amber), stop (red), target (green)
+  let overlays = "";
+  if(opts.levels){
+    opts.levels.forEach(l=>{
+      const ly = y(l.v);
+      const col = l.kind==='entry' ? '#ffb020' : (l.kind==='stop' ? '#ff3b5c' : '#00c26e');
+      overlays += `<line x1="${padL}" y1="${ly}" x2="${padL+iw}" y2="${ly}" stroke="${col}" stroke-dasharray="5,3" stroke-width="1" opacity="0.85"/><text x="${padL+3}" y="${ly-3}" fill="${col}" font-size="9" font-weight="700" text-transform="uppercase">${l.kind.toUpperCase()} ${opts.fmt(l.v)}</text>`;
+    });
+  }
+  const emaLine = emaPath ? `<path d="${emaPath}" fill="none" stroke="#f5c451" stroke-width="1.2" opacity="0.8"/>` : "";
+  const dateLabels = `<text x="${padL}" y="${H-4}" fill="#6b7280" font-size="8.5">${data[0][0]}</text><text x="${padL+iw}" y="${H-4}" fill="#6b7280" font-size="8.5" text-anchor="end">${data[data.length-1][0]}</text>`;
+  el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:100%;display:block" preserveAspectRatio="none"><rect x="${padL}" y="${padT}" width="${iw}" height="${ih}" fill="var(--chart-bg)"/>${grid}${emaLine}${candles}${overlays}${priceLine}${axisLabels}${dateLabels}</svg>`;
+  if(opts.tagId){
+    const tag = document.getElementById(opts.tagId);
+    if(tag){
+      const chg = ((last-prev)/prev*100);
+      tag.innerHTML = `<span style="color:#aeb7c3;font-size:10.5px">${opts.fmt(last)}</span> <span class="${lastUp?'pos':'neg'}" style="font-size:10.5px;font-weight:600">${(chg>=0?'+':'')+chg.toFixed(2)}%</span>`;
+    }
+  }
+}
+
+const fmtInt = v => Math.round(v).toLocaleString("en-IN");
+const fmtDec = v => v.toFixed(2);
+
+// Market context
+candleChart("chart-nifty",      KITE_DATA.nifty,     {fmt:fmtInt, tagId:"niftyTag"});
+candleChart("chart-banknifty",  KITE_DATA.banknifty, {fmt:fmtInt, tagId:"bankTag"});
+candleChart("chart-vix",        KITE_DATA.vix,       {fmt:fmtDec, tagId:"vixTag"});
+// Watched trades with entry/stop/target overlays
+candleChart("chart-bel", KITE_DATA.bel, {fmt:fmtDec, levels:[{kind:'entry',v:464.5},{kind:'stop',v:448},{kind:'target',v:499}]});
+candleChart("chart-hal", KITE_DATA.hal, {fmt:fmtInt, levels:[{kind:'entry',v:4400},{kind:'stop',v:4240},{kind:'target',v:4725}]});
+candleChart("chart-gold",KITE_DATA.goldbees,{fmt:fmtDec, levels:[{kind:'entry',v:126.5},{kind:'stop',v:122.5},{kind:'target',v:134}]});
+
+// ============= STATUS / WEEKEND / WEATHER =============
+function updateClock(){
+  const now = new Date();
+  const ist = new Date(now.getTime() + (now.getTimezoneOffset()+330)*60000);
+  const hh = String(ist.getHours()).padStart(2,'0');
+  const mm = String(ist.getMinutes()).padStart(2,'0');
+  const day = ist.getDay(); // 0=Sun, 6=Sat
+  const h = ist.getHours(), m = ist.getMinutes();
+  const mins = h*60+m;
+  let state, cls, sbCls="";
+  if(day===0 || day===6){
+    state = "WEEKEND"; cls = "mkt-weekend"; sbCls="weekend";
+    document.getElementById("nextAction").textContent = "Monday 09:00 IST pre-open scan";
+  } else if(mins>=555 && mins<=930){
+    state = "OPEN"; cls="mkt-open";
+  } else {
+    state = "CLOSED"; cls="mkt-closed";
+  }
+  document.getElementById("clock").innerHTML = `${hh}:${mm} · <span class="${cls}">${state}</span>`;
+  document.getElementById("sb").classList.toggle("weekend", sbCls==="weekend");
+}
+updateClock(); setInterval(updateClock, 30000);
+
+function setWeather(level){
+  const m = {CALM:["☀️","CALM"],ALERT:["⛅","ALERT"],WARNING:["🌧️","WARNING"],DANGER:["⛈️","DANGER"],CRISIS:["🌪️","CRISIS"]};
+  const [icon,lbl] = m[level] || ["🌧️","—"];
+  document.getElementById("weather").textContent = icon;
+  document.getElementById("weatherLbl").textContent = lbl;
+}
+
+// ============= CYCLE-BAKED WCI / IFS =============
+// Values pulled via server-side WebFetch at cycle time, embedded here.
+// Rebake: re-run trading cycle → dashboard regenerates with fresh values.
+// No CORS, no tunnel dependency, zero browser fetch errors.
+const BAKED_AT = "2026-04-17T15:55:00+05:30";
+const WCI_BAKED = {
+  id: 7, received_at: "2026-04-14 08:30:00", ticker: "SPX",
+  wci: 37.8, level: "WARNING", direction: "RETREATING", action: "ADD",
+  d7: 14.0, d1: 1.9, convergence: 0,
+  modules: { m1: 5.0, m2: 8.0, m3: 5.0, m4: 16.0, m5: 3.8 },
+  subhead: "Currency panic meets gold rush — the war-risk trade"
+};
+const IFS_BAKED = {
+  id: 1, received_at: "2026-04-14 03:59:00", ticker: "INDIA_IFS",
+  ifs: 32.5, level: "ALERT", direction: "RISING", action: "WAIT",
+  d7: 3.2, d1: 1.1, convergence: 0,
+  modules: { equity_stress: 8.5, capital_flight: 6.0, fear_gauge: 9.0, haven_commodity: 5.5, credit_liquidity: 3.5 },
+  subhead: "Rupee under pressure · FPI outflows accelerate"
+};
+
+function levelClass(level){
+  const n = (level||"").toUpperCase();
+  if(n==="CALM") return "calm"; if(n==="ALERT") return "alert";
+  if(n==="WARNING") return "warning"; if(n==="DANGER") return "danger";
+  if(n==="CRISIS") return "crisis"; return "alert";
+}
+function dirClass(dir){ return (dir||"").toLowerCase().replace(/\s+/g,''); }
+function dirSymbol(dir){
+  const d = (dir||"").toUpperCase();
+  if(d==="SURGING"||d==="RISING") return "↑ "+d.charAt(0)+d.slice(1).toLowerCase();
+  if(d==="COOLING"||d==="RETREATING") return "↓ "+d.charAt(0)+d.slice(1).toLowerCase();
+  return "→ "+d.charAt(0)+d.slice(1).toLowerCase();
+}
+function staleChip(receivedAt){
+  if(!receivedAt) return "";
+  const t = new Date(receivedAt.replace(' ','T')+"+05:30").getTime();
+  const ageH = (Date.now()-t)/3600000;
+  if(ageH>24) return `<span class="stale-chip">STALE ${Math.round(ageH/24)}d</span>`;
+  if(ageH>6)  return `<span class="stale-chip" style="opacity:.7">${Math.round(ageH)}h old</span>`;
+  return "";
+}
+
+function renderGauge(prefix, d, scoreKey){
+  if(!d){
+    document.getElementById(prefix+"Score").textContent = "—";
+    document.getElementById(prefix+"Stale").innerHTML = `<span class="stale-chip">FETCH FAILED</span>`;
+    document.getElementById("feed-"+(prefix==="wci"?"wci":"ifs")).innerHTML = `<span class="s down"></span>${prefix.toUpperCase()}`;
+    return;
+  }
+  const score = d[scoreKey] || 0;
+  document.getElementById(prefix+"Score").textContent = score.toFixed(1);
+  document.getElementById(prefix+"Ptr").style.left = Math.min(99,Math.max(0,score))+"%";
+  const lev = document.getElementById(prefix+"Level");
+  lev.textContent = d.level || "—";
+  lev.className = "level " + levelClass(d.level);
+  const dir = document.getElementById(prefix+"Dir");
+  dir.textContent = dirSymbol(d.direction);
+  dir.className = "dir " + dirClass(d.direction);
+  document.getElementById(prefix+"Action").textContent = d.action || "—";
+  document.getElementById(prefix+"Narr").textContent = d.subhead || d.narrative || "";
+  document.getElementById(prefix+"Stale").innerHTML = staleChip(d.received_at);
+  document.getElementById("feed-"+(prefix==="wci"?"wci":"ifs")).innerHTML = `<span class="s ok"></span>${prefix.toUpperCase()}`;
+}
+
+// Smart API base: same-origin when served via Flask, absolute localhost when opened from file://
+// Flask-CORS allows any origin so absolute URLs work either way.
+const API_BASE = (location.protocol === "file:" || location.hostname === "")
+  ? "http://localhost:5000"
+  : "";
+
+async function fetchLatestReal(path){
+  try{
+    const r = await fetch(API_BASE + path, { cache:"no-store" });
+    if(!r.ok) throw new Error("HTTP "+r.status);
+    const arr = await r.json();
+    const real = arr.filter(x => x.ticker !== "TEST");
+    if(!real.length) return null;
+    return real.reduce((a,b) => (a.id>b.id?a:b));
+  }catch(e){ console.warn("Fetch failed:", path, e.message); return null; }
+}
+async function renderCrisis(){
+  const [liveWci, liveIfs] = await Promise.all([
+    fetchLatestReal("/api/wci/history"),
+    fetchLatestReal("/api/india/history")
+  ]);
+  const wci = liveWci || WCI_BAKED;
+  const ifs = liveIfs || IFS_BAKED;
+  const mode = (liveWci || liveIfs) ? "LIVE" : "BAKED";
+  renderGauge("wci", wci, "wci");
+  renderGauge("ifs", ifs, "ifs");
+  setWeather((ifs.level || "ALERT").toUpperCase());
+  const rd = document.getElementById("regimeDate");
+  if(rd){
+    const ts = mode==="LIVE" ? "server-live" : new Date(BAKED_AT);
+    const ageTxt = mode==="LIVE" ? "live" : (()=>{
+      const ageH = (Date.now()-new Date(BAKED_AT).getTime())/3600000;
+      return ageH<1 ? Math.round(ageH*60)+"m ago" : ageH<24 ? Math.round(ageH)+"h ago" : Math.round(ageH/24)+"d ago";
+    })();
+    const tag = mode==="LIVE" ? '<span style="color:var(--bull)">● LIVE</span>' : '<span style="color:var(--warn)">● BAKED</span>';
+    rd.innerHTML = `${tag} · Crisis ${ageTxt} · WCI ${wci.received_at?wci.received_at.split(' ')[0]:'—'} · IFS ${ifs.received_at?ifs.received_at.split(' ')[0]:'—'}`;
+  }
+}
+renderCrisis();
+setInterval(renderCrisis, 60000); // refresh every minute when open
+
+// ============= TUNNEL URL AUTO-DETECT + COPY + TEST =============
+let TUNNEL_URL = null;
+
+async function refreshTunnel(){
+  try{
+    const r = await fetch(API_BASE + "/api/tunnel", {cache:"no-store"});
+    if(!r.ok) throw new Error("HTTP "+r.status);
+    const j = await r.json();
+    TUNNEL_URL = j.url;
+    const status = document.getElementById("tunnelStatus");
+    const urlEl = document.getElementById("tunnelUrl");
+    if(j.url){
+      urlEl.textContent = j.url;
+      status.innerHTML = '<span class="tunnel-live">● LIVE</span> — paste buttons below are ready';
+    } else {
+      urlEl.textContent = "— waiting for tunnel to report URL (check Tunnel window) —";
+      status.innerHTML = '<span class="tunnel-pending">● PENDING</span> — tunnel not yet reporting URL';
+    }
+  }catch(e){
+    // Server not reachable — dashboard opened from file:// or server down
+    document.getElementById("tunnelUrl").textContent = "(server offline — start via START_TRADER.bat)";
+    document.getElementById("tunnelStatus").innerHTML = '<span class="tunnel-offline">● OFFLINE</span> — server not running';
+  }
+}
+refreshTunnel();
+setInterval(refreshTunnel, 10000);
+
+function copyWebhook(kind){
+  if(!TUNNEL_URL){
+    // Fallback — prompt user to manually paste the tunnel URL
+    const manual = prompt("Tunnel URL not auto-detected. Paste it from the yellow Tunnel window (the https://...trycloudflare.com line):");
+    if(!manual) return;
+    TUNNEL_URL = manual.trim().replace(/\/$/, "");
+    document.getElementById("tunnelUrl").textContent = TUNNEL_URL;
+  }
+  const path = {wci:"/api/wci/webhook", india:"/api/india/webhook", cci:"/api/cci/webhook"}[kind];
+  const full = TUNNEL_URL + path;
+  navigator.clipboard.writeText(full).then(()=>{
+    const btns = document.querySelectorAll(".tbtn."+(kind==='india'?'ifs':kind));
+    btns.forEach(b=>{
+      const orig = b.textContent;
+      b.textContent = "✓ Copied!";
+      b.classList.add("copied");
+      setTimeout(()=>{ b.textContent = orig; b.classList.remove("copied"); }, 1500);
+    });
+  }).catch(()=>{
+    prompt("Copy this URL manually:", full);
+  });
+}
+
+async function testPipe(){
+  const btns = document.querySelectorAll(".tbtn.test");
+  btns.forEach(b=>b.textContent = "⏳ Testing…");
+  try{
+    // Fire a test POST to /api/test-fire
+    const r1 = await fetch(API_BASE + "/api/test-fire?which=wci", {method:"POST"});
+    if(!r1.ok) throw new Error("POST failed: "+r1.status);
+    // Verify it landed
+    const r2 = await fetch(API_BASE + "/api/wci/history", {cache:"no-store"});
+    const arr = await r2.json();
+    const found = arr.some(x => x.ticker === "PIPE_TEST");
+    btns.forEach(b=>{
+      b.textContent = found ? "✓ Pipe Works" : "✗ Not Found";
+      b.classList.add("copied");
+      setTimeout(()=>{ b.textContent = "✅ Test Pipe"; b.classList.remove("copied"); }, 2500);
+    });
+    // Force a crisis refresh to show the new entry
+    setTimeout(renderCrisis, 500);
+  }catch(e){
+    btns.forEach(b=>{ b.textContent = "✗ Failed"; setTimeout(()=>b.textContent="✅ Test Pipe", 2500); });
+    console.warn("Test pipe failed", e);
+  }
+}
+
+// ============= KPI RENDER =============
+const STATE = { startCapital:500000, equity:500000, dayPnl:0, totalPnl:0, totalR:0, positions:[], orders:[], trades:[], equityHistory:[500000] };
+const fmt = n => "₹"+Number(n).toLocaleString("en-IN",{maximumFractionDigits:0});
+function colorCard(el,v){el.classList.remove("bull","bear","info","warn");if(v>0)el.classList.add("bull");else if(v<0)el.classList.add("bear");else el.classList.add("info");}
+function renderKPI(){
+  const s=STATE, diff=s.equity-s.startCapital;
+  document.getElementById("equity").textContent=fmt(s.equity);
+  const ec=document.getElementById("equityChange");
+  ec.textContent=diff===0?"Starting capital":fmt(diff);
+  ec.classList.remove("pos","neg");if(diff>0)ec.classList.add("pos");if(diff<0)ec.classList.add("neg");
+  colorCard(document.getElementById("cEquity"),diff);
+  document.getElementById("dayPnl").textContent=fmt(s.dayPnl);
+  document.getElementById("dayPct").textContent=((s.dayPnl>=0?"+":"")+(s.dayPnl/s.startCapital*100).toFixed(2))+"%";
+  colorCard(document.getElementById("cDay"),s.dayPnl);
+  document.getElementById("totalPnl").textContent=fmt(s.totalPnl)+" · "+s.totalR.toFixed(1)+"R";
+  colorCard(document.getElementById("cTotal"),s.totalPnl);
+  const heat=s.positions.reduce((a,p)=>a+(p.risk||0),0);
+  document.getElementById("heat").innerHTML=fmt(heat)+' <span style="font-size:12px;color:var(--muted)">/ ₹30,000</span>';
+}
+renderKPI();
+
+// ============= THEME TOGGLE =============
+function applyTheme(theme){
+  const btn = document.getElementById("themeBtn");
+  if(theme === "light"){
+    document.body.classList.add("theme-light");
+    if(btn) btn.innerHTML = "☀️ Light";
+  } else {
+    document.body.classList.remove("theme-light");
+    if(btn) btn.innerHTML = "🌙 Dark";
+  }
+  // Re-render SVG charts so their inner backgrounds match the new theme
+  try{
+    candleChart("chart-nifty", KITE_DATA.nifty, {fmt:fmtInt, tagId:"niftyTag"});
+    candleChart("chart-banknifty", KITE_DATA.banknifty, {fmt:fmtInt, tagId:"bankTag"});
+    candleChart("chart-vix", KITE_DATA.vix, {fmt:fmtDec, tagId:"vixTag"});
+    candleChart("chart-bel", KITE_DATA.bel, {fmt:fmtDec, levels:[{kind:'entry',v:464.5},{kind:'stop',v:448},{kind:'target',v:499}]});
+    candleChart("chart-hal", KITE_DATA.hal, {fmt:fmtInt, levels:[{kind:'entry',v:4400},{kind:'stop',v:4240},{kind:'target',v:4725}]});
+    candleChart("chart-gold", KITE_DATA.goldbees, {fmt:fmtDec, levels:[{kind:'entry',v:126.5},{kind:'stop',v:122.5},{kind:'target',v:134}]});
+  }catch(e){}
+}
+function toggleTheme(){
+  const current = localStorage.getItem("trader-theme") || "dark";
+  const next = current === "dark" ? "light" : "dark";
+  localStorage.setItem("trader-theme", next);
+  applyTheme(next);
+}
+// Apply saved theme on load
+applyTheme(localStorage.getItem("trader-theme") || "dark");
+</script>
+</body>
+</html>

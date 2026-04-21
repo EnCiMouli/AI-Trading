@@ -1,0 +1,8 @@
+services:
+  - type: web
+    name: ai-trader
+    env: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app --timeout 60 --workers 1 --threads 2 --bind 0.0.0.0:$PORT
+    healthCheckPath: /api/health

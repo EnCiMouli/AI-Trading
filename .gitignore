@@ -1,0 +1,5 @@
+crisis.db
+tunnel.log
+__pycache__/
+*.pyc
+.env
